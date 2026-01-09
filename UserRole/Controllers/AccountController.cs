@@ -42,5 +42,56 @@ namespace UserRole.Controllers
             ModelState.AddModelError(string.Empty, "Invalid Login Attempt.");
             return View(model);
         }
+
+        [HttpGet]
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(RegisterViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+            var user = new Users
+            {
+                FullName = model.Email,
+                UserName = model.Email,
+                NormalizedUserName = model.Email.ToUpper(),
+                Email = model.Email,
+                NormalizedEmail = model.Email.ToUpper()
+            };
+            var result = await _userManager.CreateAsync(user,model.Password);
+
+            if (result.Succeeded)
+            {
+                var roleExist = await _roleManager.RoleExistsAsync("User");
+
+                if (!roleExist)
+                {
+                    var role = new IdentityRole("User");
+                    await _roleManager.CreateAsync(role);
+                }
+
+                await _userManager.AddToRoleAsync(user, "User");
+
+                await _signInManager.SignInAsync(user, isPersistent: false);
+
+                return RedirectToAction("Login", "Account");
+            }
+
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            return View(model);
+
+        }
     }
+    
 }
